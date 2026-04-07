@@ -34,7 +34,7 @@ class PolytopiaEnv:
         self.grid = Grid(width, height)
         self.warrior = None
         self.steps = 0
-        self.max_steps = 200
+        self.max_steps = 120
 
     # ------------------------------------------------------------------
     # Core interface
@@ -46,8 +46,8 @@ class PolytopiaEnv:
         self.steps = 0
 
         # spawn warrior at random position
-        start_x = random.randint(0, self.width - 1)
-        start_y = random.randint(0, self.height - 1)
+        start_x = random.randint(1, self.width - 2)
+        start_y = random.randint(1, self.height - 2)
         self.warrior = Warrior(start_x, start_y)
 
         self.grid.reveal(self.warrior.x, self.warrior.y, self.warrior.vision_radius)
