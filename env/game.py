@@ -12,17 +12,18 @@ class PolytopiaEnv:
         obs, reward, done, info = env.step(action)
  
     State (observation):
-        A flat numpy array of length 102:
+        A flat numpy array of length 110:
         - 100 values: fog map (10x10 flattened), 0.0 = unseen, 1.0 = seen
         - 2 values: warrior's (x, y) position normalized to [0, 1]
- 
+        - 8 values: one-hot encoding of the last action taken (all zero before the first step)
+
     Actions:
         0=up, 1=down, 2=left, 3=right,
         4=up-left, 5=up-right, 6=down-left, 7=down-right
- 
+
     Rewards:
         +1  for each new tile revealed this step
-         0  if no new tiles revealed (already seen or hit a wall)
+        -0.05 for a valid move that reveals no new tiles (revisiting)
         -0.1 penalty for hitting the boundary (invalid move)
     """
 
@@ -35,6 +36,7 @@ class PolytopiaEnv:
         self.warrior = None
         self.steps = 0
         self.max_steps = 120
+        self.last_action = None
 
     # ------------------------------------------------------------------
     # Core interface
@@ -59,6 +61,7 @@ class PolytopiaEnv:
         Apply action and return (observation, reward, done, info).
         """
         self.steps += 1
+        self.last_action = action
 
         nx, ny = self.warrior.get_next_position(action)
 
@@ -67,7 +70,7 @@ class PolytopiaEnv:
             reward = -0.1
             done = self.grid.all_explored() or self.steps >= self.max_steps
             return self._get_obs(), reward, done, self._get_info()
-        
+
         # valid move
         before = self.grid.explored_count()
         self.warrior.move(action)
@@ -75,6 +78,8 @@ class PolytopiaEnv:
         after = self.grid.explored_count()
 
         reward = float(after - before)
+        if reward == 0.0:
+            reward = -0.05  # revisiting an already-explored tile
         done = self.grid.all_explored() or self.steps >= self.max_steps
 
         return self._get_obs(), reward, done, self._get_info()
@@ -117,7 +122,10 @@ class PolytopiaEnv:
             self.warrior.x / (self.width - 1),
             self.warrior.y / (self.height - 1),
         ], dtype=np.float32)
-        return np.concatenate([fog_flat, pos])
+        last_action_onehot = np.zeros(self.NUM_ACTIONS, dtype=np.float32)
+        if self.last_action is not None:
+            last_action_onehot[self.last_action] = 1.0
+        return np.concatenate([fog_flat, pos, last_action_onehot])
     
     def _get_info(self) -> dict:
         return {

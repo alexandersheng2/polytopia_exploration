@@ -50,8 +50,6 @@ def train(
 
             # take step
             next_obs, reward, done, info = env.step(action)
-            if reward == 0 and not done:
-                reward = -0.05 # penalty for revisiting
             reward = max(-1.0, min(1.0, reward)) # clip reward
 
             # store experience

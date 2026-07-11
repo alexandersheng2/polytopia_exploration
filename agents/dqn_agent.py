@@ -16,7 +16,7 @@ class QNetwork(nn.Module):
     """
     Maps a state observation to Q values for each action.
  
-    Input:  102 floats (fog map + position)
+    Input:  110 floats (fog map + position + last-action one-hot)
     Output: 8 floats (Q value for each action)
     """
 
@@ -76,7 +76,7 @@ class DQNAgent:
 
     def __init__(
         self,
-        obs_size: int = 102,
+        obs_size: int = 110,
         num_actions: int = 8,
         lr: float = 1e-4,           # learning rate
         gamma: float = 0.99,        # discount factor
@@ -144,9 +144,12 @@ class DQNAgent:
         # current Q values for the actions we took
         current_q = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
-        # target Q values using Bellman equation
+        # target Q values using Bellman equation (Double DQN: select the best
+        # next action with the online network, evaluate it with the target
+        # network, to avoid the overestimation bias of vanilla DQN)
         with torch.no_grad():
-            max_next_q = self.target_network(next_states).max(1).values
+            next_actions = self.q_network(next_states).argmax(1)
+            max_next_q = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1)
             target_q = rewards + self.gamma * max_next_q * (1 - dones)
 
         # compute loss and update weights
